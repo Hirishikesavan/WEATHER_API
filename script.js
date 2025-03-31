@@ -5,81 +5,53 @@ const currentWeatherDiv = document.querySelector(".current-weather");
 const weatherCardsDiv = document.querySelector(".weather-cards");
 const loadingSpinner = document.querySelector(".loading-spinner");
 
-const API_KEY = "YOUR_API_KEY"; // Replace with your OpenWeatherMap API key
+const API_KEY = "c7bd508de7cb96aa4ce06b7dde749a49"; // Replace with your OpenWeatherMap API key
 
 const createWeatherCard = (cityName, weatherItem, index) => {
-    let date = weatherItem.dt_txt.split(" ")[0];
-    let temp = (weatherItem.main.temp - 273.15).toFixed(2);
-    let wind = weatherItem.wind.speed;
-    let humidity = weatherItem.main.humidity;
-    let icon = weatherItem.weather[0].icon;
-    let description = weatherItem.weather[0].description;
-
-    if (index === 0) {
-        return `
-            <div class="details">
-                <h2>${cityName} (${date})</h2>
-                <h6>Temperature: ${temp}°C</h6>
-                <h6>Wind: ${wind} M/S</h6>
-                <h6>Humidity: ${humidity}%</h6>
+  if (index === 0) {
+    return `<div class="details">
+                <h2>${cityName} (${weatherItem.dt_txt.split(" ")[0]})</h2>
+                <h6>Temperature: ${(weatherItem.main.temp - 273.15).toFixed(2)}°C</h6>
+                <h6>Wind: ${weatherItem.wind.speed} M/S</h6>
+                <h6>Humidity: ${weatherItem.main.humidity}%</h6>
             </div>
             <div class="icon">
-                <img src="https://openweathermap.org/img/wn/${icon}@4x.png" alt="weather-icon">
-                <h6>${description}</h6>
-            </div>
-        `;
-    } else {
-        return `
-            <li class="card">
-                <h3>(${date})</h3>
-                <img src="https://openweathermap.org/img/wn/${icon}@4x.png" alt="weather-icon">
-                <h6>Temp: ${temp}°C</h6>
-                <h6>Wind: ${wind} M/S</h6>
-                <h6>Humidity: ${humidity}%</h6>
-            </li>
-        `;
-    }
+                <img src="https://openweathermap.org/img/wn/${weatherItem.weather[0].icon}@4x.png">
+                <h6>${weatherItem.weather[0].description}</h6>
+            </div>`;
+  } else {
+    return `<li class="card">
+                <h3>(${weatherItem.dt_txt.split(" ")[0]})</h3>
+                <img src="https://openweathermap.org/img/wn/${weatherItem.weather[0].icon}@4x.png">
+                <h6>Temp: ${(weatherItem.main.temp - 273.15).toFixed(2)}°C</h6>
+                <h6>Wind: ${weatherItem.wind.speed} M/S</h6>
+                <h6>Humidity: ${weatherItem.main.humidity}%</h6>
+            </li>`;
+  }
 };
 
-const fetchWeather = (url, cityName) => {
-    showLoading();
-    fetch(url)
-        .then(response => response.json())
-        .then(data => {
-            hideLoading();
-            let uniqueDays = [];
-            let forecast = data.list.filter(item => {
-                let date = new Date(item.dt_txt).getDate();
-                if (!uniqueDays.includes(date)) {
-                    uniqueDays.push(date);
-                    return true;
-                }
-                return false;
-            });
-
-            cityInput.value = "";
-            currentWeatherDiv.innerHTML = createWeatherCard(cityName, forecast[0], 0);
-            weatherCardsDiv.innerHTML = forecast.slice(1).map((item, i) => createWeatherCard(cityName, item, i)).join("");
-        })
-        .catch(() => {
-            hideLoading();
-            alert("Error fetching weather data!");
-        });
+const getWeatherDetails = async (cityName, latitude, longitude) => {
+  const API_URL = `https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&appid=${API_KEY}`;
+  showLoading();
+  try {
+    const response = await fetch(API_URL);
+    const data = await response.json();
+    hideLoading();
+    weatherCardsDiv.innerHTML = "";
+    currentWeatherDiv.innerHTML = createWeatherCard(cityName, data.list[0], 0);
+    data.list.slice(1, 6).forEach((weatherItem, index) => {
+      weatherCardsDiv.innerHTML += createWeatherCard(cityName, weatherItem, index + 1);
+    });
+  } catch {
+    hideLoading();
+    alert("Failed to fetch weather data!");
+  }
 };
 
 searchButton.addEventListener("click", () => {
-    let city = cityInput.value.trim();
-    if (city) fetchWeather(`https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${API_KEY}`, city);
+  const city = cityInput.value.trim();
+  if (city) getWeatherDetails(city, 13.0827, 80.2707); // Default to Chennai
 });
 
-locationButton.addEventListener("click", () => {
-    navigator.geolocation.getCurrentPosition(position => {
-        let { latitude, longitude } = position.coords;
-        fetchWeather(`https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&appid=${API_KEY}`, "Your Location");
-    });
-});
-
-const showLoading = () => loadingSpinner.style.display = "block";
-const hideLoading = () => loadingSpinner.style.display = "none";
 
 
